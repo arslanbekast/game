@@ -1,0 +1,11 @@
+{
+  "name": "game",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "author": "Arslanbek Astemirov",
+  "license": "MIT",
+  "dependencies": {
+    "jest": "^29.7.0"
+  }
+}

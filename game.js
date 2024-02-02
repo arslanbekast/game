@@ -1,4 +1,4 @@
-class Game {
+export class Game {
     #settings = {
         pointsToWin: 10,
         gridSize: {
@@ -17,8 +17,11 @@ class Game {
     #player2;
     #google;
 
-    constructor(name) {
+    eventEmitter;
+
+    constructor(name, eventEmitter) {
         this.name = name;
+        this.eventEmitter = eventEmitter;
     }
 
     #getRandomPosition(notCrossedPositions = []) {
@@ -109,6 +112,7 @@ class Game {
         }
         const googlePosition = this.#getRandomPosition(notCrossedPositions);
         this.#google.position = googlePosition;
+        this.eventEmitter.emit('change');
     }
 
     get players() {
@@ -128,8 +132,8 @@ class Game {
         if (delta.x) newPosition.x += delta.x;
         if (delta.y) newPosition.y += delta.y;
 
-        if (newPosition.x < 0 || newPosition.x > this.#settings.gridSize.columnsCount) return false;
-        if (newPosition.y < 0 || newPosition.y > this.#settings.gridSize.rowsCount) return false;
+        if (newPosition.x < 0 || newPosition.x >= this.#settings.gridSize.columnsCount) return false;
+        if (newPosition.y < 0 || newPosition.y >= this.#settings.gridSize.rowsCount) return false;
 
         return true;
     }
@@ -167,6 +171,7 @@ class Game {
         if (delta.y) player.position = new Position(player.position.x, player.position.y + delta.y);
 
         this.#checkGoogleCatching(player);
+        this.eventEmitter.emit('change');
     }
 
     movePlayer1Right() {
@@ -226,7 +231,7 @@ class NumberUtil {
 // poisiton1 === position2 (pos1.x === pos2.x && pos1.y === pos2.y)
 
 // value object
-class Position {
+export class Position {
     constructor(x, y) {
         this.x = x;
         this.y = y;
@@ -272,7 +277,3 @@ class Google extends Unit {
 }
 
 
-module.exports = {
-    Game,
-    Position
-}

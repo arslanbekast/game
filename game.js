@@ -1,3 +1,43 @@
+export class EventsFactory {
+    playerStatedPositionsSet(x,y, playerNumber) {
+        return {type: `PLAYER/STARTED-POSITIONS-SET`, payload: {x, y, playerNumber}}
+    }
+
+    playerMoved(delta, playerNumber) {
+        let direction;
+
+        if (delta.x > 0) {
+            direction = DIRECTIONS.RIGHT;
+        } else if (delta.x < 0) {
+            direction = DIRECTIONS.RIGHT;
+        } else if (delta.y < 0) {
+            direction = DIRECTIONS.UP;
+
+        } else if (delta.y > 0) {
+            direction = DIRECTIONS.DOWN;
+        }
+
+        return {type: `PLAYER/MOVED`, payload: {direction, playerNumber}}
+    }
+
+    googleJumped(x, y) {
+        return {type: 'GOOGLE/JUMPED', payload: {x, y}}
+    }
+}
+
+export const DIRECTIONS = {
+    UP: 'up',
+    DOWN: 'down',
+    LEFT: 'left',
+    RIGHT: 'right'
+}
+
+export const GAME_MODES = {
+    CLIENT: 'client',
+    ONLY_CLIENT: 'only-client',
+    SERVER: 'server'
+}
+
 export class Game {
     #settings = {
         pointsToWin: 10,
@@ -5,7 +45,8 @@ export class Game {
             columnsCount: 4,
             rowsCount: 4
         },
-        googleJumpInterval: 2000
+        googleJumpInterval: 2000,
+        mode: 'client'// | 'only-client' | 'server'
     }
     #status = 'pending';
     #score = {
@@ -16,10 +57,12 @@ export class Game {
     #player1;
     #player2;
     #google;
+    #eventsFactory;
 
     eventEmitter;
 
-    constructor(name, eventEmitter) {
+    constructor(name, eventEmitter, eventsFactory) {
+        this.#eventsFactory = eventsFactory;
         this.name = name;
         this.eventEmitter = eventEmitter;
     }
@@ -38,6 +81,8 @@ export class Game {
 
         return new Position(newX, newY)
     }
+
+
 
     set settings(settings) {
         /*if (!settings.gridSize) {
@@ -67,22 +112,55 @@ export class Game {
         return this.#status;
     }
 
+    setGooglePosition(x, y) {
+        if (this.#settings.mode !== GAME_MODES.CLIENT) {
+            throw new Error('Imposible control google poisiton')
+        }
+
+        this.#google.position = new Position(x,y);
+        this.eventEmitter.emit('change', this.#eventsFactory.googleJumped(this.#google.position.x, this.#google.position.y));
+    }
+    setPlayerPosition(x, y, playerNumber) {
+        if (this.#settings.mode !== GAME_MODES.CLIENT) {
+            throw new Error('Imposible control google poisiton')
+        }
+
+        const player = playerNumber === 1 ? this.#player1 : this.#player2;
+        player.position = new Position(x,y);
+        this.eventEmitter.emit('change');
+    }
+
     #createUnits() {
         const player1Position = this.#getRandomPosition([])
         this.#player1 = new Player(player1Position, 1);
 
+        this.eventEmitter.emit('change', this.#eventsFactory.playerStatedPositionsSet(player1Position.x, player1Position.y, 1))
+
         const player2Position = this.#getRandomPosition([player1Position]);
         this.#player2 = new Player(player2Position, 2);
 
+        this.eventEmitter.emit('change', this.#eventsFactory.playerStatedPositionsSet(player2Position.x, player2Position.y, 2))
+
         this.#google = new Google()
-        this.#moveGoogleToRandomPosition(true)
+        this.#moveGoogleToRandomPosition(true);
+    }
+
+    #createUnitsForClientMode() {
+        this.#player1 = new Player(new Position(0,0), 1);
+        this.#player2 = new Player(new Position(0,0), 2);
+        this.#google = new Google(new Position(0,0));
     }
 
     async start() {
         if (this.#status === 'pending') {
-            this.#createUnits();
             this.#status = 'in-progress';
-            this.#runGoogleJumpInterval();
+
+            if (this.#settings.mode !== GAME_MODES.CLIENT) {
+                this.#createUnits();
+                this.#runGoogleJumpInterval();
+            } else {
+                this.#createUnitsForClientMode();
+            }
         }
     }
 
@@ -112,7 +190,7 @@ export class Game {
         }
         const googlePosition = this.#getRandomPosition(notCrossedPositions);
         this.#google.position = googlePosition;
-        this.eventEmitter.emit('change');
+        this.eventEmitter.emit('change', this.#eventsFactory.googleJumped(googlePosition.x, googlePosition.y));
     }
 
     get players() {
@@ -171,7 +249,8 @@ export class Game {
         if (delta.y) player.position = new Position(player.position.x, player.position.y + delta.y);
 
         this.#checkGoogleCatching(player);
-        this.eventEmitter.emit('change');
+        console.log('movePlayer');
+        this.eventEmitter.emit('change', this.#eventsFactory.playerMoved(delta, player.number));
     }
 
     movePlayer1Right() {

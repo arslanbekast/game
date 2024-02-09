@@ -1,18 +1,52 @@
-export class GameComponent {
+import {DIRECTIONS} from './game.js';
+
+export class GameView {
     #tableElement;
     #resultsElement;
     #game;
+    #controller;
+    #unbindEventListeners = null;
 
-    constructor(game) {
+    constructor(controller, game) {
         this.#game = game;
+        this.#controller = controller;
         this.#tableElement = document.getElementById('game-grid')
         this.#resultsElement = document.getElementById('results')
 
-        game.eventEmitter.on('change', () => {
+        game.eventEmitter.on('change', (event) => {
             this.render();
         })
     }
 
+    #bindEventListeners() {
+        if (this.#unbindEventListeners !== null) {
+            this.#unbindEventListeners();
+        }
+
+        const handlers = {
+            "ArrowUp": () => this.#controller.movePlayer(DIRECTIONS.UP, 1),
+            "ArrowDown": () => this.#controller.movePlayer(DIRECTIONS.DOWN, 1),
+            "ArrowRight": () => this.#controller.movePlayer(DIRECTIONS.RIGHT, 1),
+            "ArrowLeft": () => this.#controller.movePlayer(DIRECTIONS.LEFT, 1),
+
+            "KeyW": () =>  this.#controller.movePlayer(DIRECTIONS.UP, 2),
+            "KeyS": () => this.#controller.movePlayer(DIRECTIONS.DOWN, 2),
+            "KeyD": () => this.#controller.movePlayer(DIRECTIONS.RIGHT, 2),
+            "KeyA": () => this.#controller.movePlayer(DIRECTIONS.LEFT, 2)
+        }
+
+        let bindPlayerControls = (e) => {
+            const handler = handlers[e.code];
+            if (handler) {
+                handler();
+            }
+        };
+        window.addEventListener('keydown', bindPlayerControls);
+
+        this.#unbindEventListeners = () => {
+            window.removeEventListener('keydown', bindPlayerControls)
+        }
+    }
 
     render() {
         this.#tableElement.innerHTML = '';
@@ -49,5 +83,8 @@ export class GameComponent {
 
             this.#tableElement.append(trElement);
         }
+
+
+        this.#bindEventListeners();
     }
 }

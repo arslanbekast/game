@@ -1,56 +1,33 @@
-import {Game} from './game.js';
+import {EventsFactory, Game, GAME_MODES} from './game.js';
 import {EventEmitter} from './utils/observer/EventEmitter.js';
-import {GameComponent} from './view.js';
+import {GameView} from './view.js';
+import {Controller1} from './controller1.js';
+import {socket} from './front/ws.js';
+import {WSAdapter} from './front/WSAdapter.js';
 
 
 const start = async () => {
     const eventEmitter = new EventEmitter()
-    const game = new Game("name", eventEmitter); // di
+    const eventsFactory = new EventsFactory()
+    const wsAdapter = new WSAdapter(socket)
+
+    const game = new Game("name", eventEmitter, eventsFactory); // di
     game.settings = {gridSize: {
         columnsCount: 4,
         rowsCount: 4,
-        }}
+        },
+        mode: GAME_MODES.CLIENT
+    }
     await game.start();
 
-    const view = new GameComponent(game);
+    const controller = new Controller1(game, wsAdapter);
+    const view = new GameView(controller, game);
 
     view.render();
-
-    window.addEventListener('keydown', (e) => {
-        switch (e.code) {
-            case "ArrowUp":
-                game.movePlayer1Up();
-                break;
-            case "ArrowDown":
-                game.movePlayer1Down();
-                break;
-            case "ArrowRight":
-                game.movePlayer1Right();
-                break;
-            case "ArrowLeft":
-                game.movePlayer1Left();
-                break;
-        }
-    });
-    window.addEventListener('keydown', (e) => {
-
-        switch (e.code) {
-            case "KeyW":
-                game.movePlayer2Up();
-                break;
-            case "KeyS":
-                game.movePlayer2Down();
-                break;
-            case "KeyD":
-                game.movePlayer2Right();
-                break;
-            case "KeyA":
-                game.movePlayer2Left();
-                break;
-        }
-    });
 }
 
 
 
 start();
+
+

@@ -1,72 +1,50 @@
-import {Game} from './game.js';
-import {EventEmitter} from './utils/observer/EventEmitter.js';
-import {GameComponent} from './view.js';
+import {DIRECTIONS} from './game.js';
 
 
-class Controller {
-    constructor(model) {
-        this.model = model;
+export class Controller1 {
+    #game;
+    #wsAdapter;
+    constructor(game, wsAdapter) {
+        this.#game = game;
+        this.#wsAdapter = wsAdapter;
+
+        this.#wsAdapter.subscribe('new-message', (event) => {
+            if (event.type === 'GOOGLE/JUMPED') {
+                this.#game.setGooglePosition(event.payload.x, event.payload.y)
+            }
+            if (event.type === 'PLAYER/MOVED') {
+                this.#reallyMovePlayer(event.payload.direction, event.payload.playerNumber);
+            }
+            if (event.type === 'PLAYER/STARTED-POSITIONS-SET') {
+                this.#game.setPlayerPosition(event.payload.x, event.payload.y, event.payload.playerNumber);
+            }
+        })
     }
 
-    handleClick() {
-        // Обработка клика и обновление модели
-        this.model.setData('New data ' + new Date().toISOString());
+    movePlayer(direction, playerNumber) {
+        this.#wsAdapter.send({
+            commandType: 'MOVE-PLAYER',
+            payload: {
+                direction,
+                playerNumber
+            }
+        });
+    }
+    #reallyMovePlayer(direction, playerNumber) {
+        switch (direction) {
+            case DIRECTIONS.UP:
+                this.#game[`movePlayer${playerNumber}Up`]();
+                break;
+            case DIRECTIONS.DOWN:
+                this.#game[`movePlayer${playerNumber}Down`]();
+                break;
+            case DIRECTIONS.RIGHT:
+                this.#game[`movePlayer${playerNumber}Right`]();
+                break;
+            case DIRECTIONS.LEFT:
+                this.#game[`movePlayer${playerNumber}Left`]();
+                break;
+        }
     }
 }
 
-const start = async () => {
-    const eventEmitter = new EventEmitter()
-    const game = new Game("name", eventEmitter); // di
-    game.settings = {gridSize: {
-        columnsCount: 4,
-        rowsCount: 4,
-        }}
-    await game.start();
-
-    const view = new GameComponent(game);
-
-
-    game.eventEmitter.on('change', () => {
-        view.render();
-    })
-
-    view.render();
-
-    window.addEventListener('keydown', (e) => {
-        switch (e.code) {
-            case "ArrowUp":
-                game.movePlayer1Up();
-                break;
-            case "ArrowDown":
-                game.movePlayer1Down();
-                break;
-            case "ArrowRight":
-                game.movePlayer1Right();
-                break;
-            case "ArrowLeft":
-                game.movePlayer1Left();
-                break;
-        }
-    });
-    window.addEventListener('keydown', (e) => {
-
-        switch (e.code) {
-            case "KeyW":
-                game.movePlayer2Up();
-                break;
-            case "KeyS":
-                game.movePlayer2Down();
-                break;
-            case "KeyD":
-                game.movePlayer2Right();
-                break;
-            case "KeyA":
-                game.movePlayer2Left();
-                break;
-        }
-    });
-}
-
-
-
-start();
